@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Exam Score Predictor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .api-status {
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .api-status.connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .api-status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .api-status.checking {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        input:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .result-card {
+            margin-top: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 20px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: #555;
+            font-weight: 500;
+        }
+
+        .result-value {
+            color: #667eea;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .error-message {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8d7da;
+            color: #721c24;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #f5c6cb;
+        }
+
+        .hint {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 Student Score Predictor</h1>
+        <p class="subtitle">Predict your exam score based on study hours</p>
+
+        <!-- API Status Indicator -->
+        <div id="apiStatus" class="api-status checking">
+            <span id="statusText">Checking API connection...</span>
+        </div>
+
+        <!-- Main Form -->
+        <form id="predictionForm">
+            <div class="form-group">
+                <label for="studyHours">📖 Study Hours per Day:</label>
+                <input 
+                    type="number" 
+                    id="studyHours" 
+                    name="studyHours" 
+                    placeholder="Enter study hours (e.g., 5.5)" 
+                    step="0.1" 
+                    min="0.1" 
+                    max="24" 
+                    required
+                    disabled
+                >
+            </div>
+            <button type="submit" id="predictBtn" disabled>
+                <span id="btnText">Predict Score</span>
+                <span id="btnLoader" class="loader" style="display: none;"></span>
+            </button>
+        </form>
+
+        <!-- Result Display -->
+        <div id="resultContainer" style="display: none;">
+            <div class="result-card">
+                <h3>📊 Prediction Result</h3>
+                <div class="result-item">
+                    <span class="result-label">Study Hours:</span>
+                    <span class="result-value" id="resultHours">0</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Predicted Score:</span>
+                    <span class="result-value" id="resultScore">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Display -->
+        <div id="errorContainer" style="display: none;">
+            <div class="error-message" id="errorMessage"></div>
+        </div>
+
+        <!-- Hint for API -->
+        <div class="hint" id="apiHint" style="display: none;">
+            ⚡ Make sure your FastAPI server is running on http://localhost:8000
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            Powered by FastAPI & Linear Regression
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+
+        // DOM Elements
+        const apiStatus = document.getElementById('apiStatus');
+        const statusText = document.getElementById('statusText');
+        const studyHoursInput = document.getElementById('studyHours');
+        const predictBtn = document.getElementById('predictBtn');
+        const btnText = document.getElementById('btnText');
+        const btnLoader = document.getElementById('btnLoader');
+        const resultContainer = document.getElementById('resultContainer');
+        const errorContainer = document.getElementById('errorContainer');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultHours = document.getElementById('resultHours');
+        const resultScore = document.getElementById('resultScore');
+        const apiHint = document.getElementById('apiHint');
+
+        // Check API health on page load
+        async function checkAPIHealth() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateAPIStatus('connected', '🟢 Connected to API');
+                    enableForm();
+                } else {
+                    throw new Error('API not responding properly');
+                }
+            } catch (error) {
+                console.error('API Health Check Failed:', error);
+                updateAPIStatus('disconnected', '🔴 API Disconnected');
+                disableForm();
+                apiHint.style.display = 'block';
+                showError('Cannot connect to the prediction API. Please make sure the backend is running on http://localhost:8000');
+            }
+        }
+
+        // Update API status UI
+        function updateAPIStatus(status, message) {
+            apiStatus.className = 'api-status ' + status;
+            statusText.textContent = message;
+        }
+
+        // Enable form elements
+        function enableForm() {
+            studyHoursInput.disabled = false;
+            predictBtn.disabled = false;
+        }
+
+        // Disable form elements
+        function disableForm() {
+            studyHoursInput.disabled = true;
+            predictBtn.disabled = true;
+        }
+
+        // Show loading state
+        function setLoading(isLoading) {
+            if (isLoading) {
+                btnText.style.display = 'none';
+                btnLoader.style.display = 'inline-block';
+                predictBtn.disabled = true;
+                studyHoursInput.disabled = true;
+            } else {
+                btnText.style.display = 'inline';
+                btnLoader.style.display = 'none';
+                predictBtn.disabled = false;
+                studyHoursInput.disabled = false;
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorContainer.style.display = 'block';
+            resultContainer.style.display = 'none';
+        }
+
+        // Hide error
+        function hideError() {
+            errorContainer.style.display = 'none';
+        }
+
+        // Show result
+        function showResult(hours, score) {
+            resultHours.textContent = hours + ' hours/day';
+            resultScore.textContent = score.toFixed(2) + '%';
+            resultContainer.style.display = 'block';
+            errorContainer.style.display = 'none';
+        }
+
+        // Make prediction
+        async function makePrediction(studyHours) {
+            try {
+                setLoading(true);
+                hideError();
+
+                const response = await fetch(`${API_BASE_URL}/predict?Study_hour=${studyHours}`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Handle the response based on your API structure
+                // Your API returns "predicated_score" (note the typo)
+                if (data.predicated_score !== undefined) {
+                    showResult(studyHours, data.predicated_score);
+                } 
+                // Also handle if it's "predicted_score"
+                else if (data.predicted_score !== undefined) {
+                    showResult(studyHours, data.predicted_score);
+                }
+                else {
+                    throw new Error('Unexpected response format');
+                }
+
+            } catch (error) {
+                console.error('Prediction error:', error);
+                showError('Failed to get prediction. Please try again. ' + error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Form submission handler
+        document.getElementById('predictionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const studyHours = parseFloat(studyHoursInput.value);
+            
+            // Validate input
+            if (isNaN(studyHours) || studyHours <= 0) {
+                showError('Please enter valid study hours (greater than 0)');
+                return;
+            }
+
+            if (studyHours > 24) {
+                showError('Study hours cannot exceed 24 hours per day');
+                return;
+            }
+
+            makePrediction(studyHours);
+        });
+
+        // Input validation on change
+        studyHoursInput.addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            if (value < 0) {
+                this.value = 0.1;
+            } else if (value > 24) {
+                this.value = 24;
+            }
+        });
+
+        // Check API health when page loads
+        checkAPIHealth();
+
+        // Optional: Check API health every 30 seconds
+        setInterval(checkAPIHealth, 30000);
+    </script>
+</body>
+</html>
